@@ -5,7 +5,7 @@ from flask import Flask, jsonify
 from threading import Thread
 
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
-CHANNEL_ID = 1401062758589665362  # Replace with your Discord channel ID
+CHANNEL_ID = 1408872707319267460  # Replace with your Discord channel ID
 
 app = Flask(__name__)
 pet_servers = []

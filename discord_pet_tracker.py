@@ -11,12 +11,11 @@ app = Flask(__name__)
 pet_servers = []
 
 def strip_code_block(text):
-    if text.startswith("```") and text.endswith("```"):
-        return text[3:-3].strip()
-    return text.strip()
+    # Remove Discord code blocks and whitespace
+    return text.replace("```lua", "").replace("```", "").replace("\n", "").replace("\r", "").strip()
 
 def parse_pet_embed(embed):
-    name = mutation = dps = tier = jobId = placeId = None
+    name = mutation = dps = tier = jobId = placeId = joinScript = None
     players = None
 
     for field in embed.fields:
@@ -40,15 +39,15 @@ def parse_pet_embed(embed):
         elif "jobid" in fname:
             jobId = strip_code_block(fvalue)
         elif "join script" in fname:
-            script = strip_code_block(fvalue)
-            m = re.search(r'TeleportToPlaceInstance\((\d+),\s*"([\w-]+)', script)
+            joinScript = strip_code_block(fvalue)
+            # Also parse PlaceId and JobId from joinScript for extra safety
+            m = re.search(r'TeleportToPlaceInstance\((\d+),\s*["\']?([\w-]+)["\']?', joinScript)
             if m:
                 placeId = m.group(1)
                 jobId2 = m.group(2)
                 # Prefer directly parsed JobId from script if not found above
                 if not jobId and jobId2:
                     jobId = jobId2
-        # You can also extract from "Join Link" if needed
 
     if players and (3 <= players["current"] <= 7):
         if name and jobId and placeId:
@@ -60,6 +59,7 @@ def parse_pet_embed(embed):
                 "players": f'{players["current"]}/{players["max"]}',
                 "jobId": jobId,
                 "placeId": placeId,
+                "joinScript": joinScript or "",
                 "timestamp": discord.utils.utcnow().timestamp(),
             }
     return None

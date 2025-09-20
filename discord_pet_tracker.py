@@ -5,51 +5,51 @@ from flask import Flask, jsonify
 from threading import Thread
 
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
-CHANNEL_ID = 1415430262178713680  # Replace with your Discord channel ID
+CHANNEL_ID = 1417960188085796895  # Replace with your Discord channel ID
 
 app = Flask(__name__)
 pet_servers = []
 
+def strip_code_block(text):
+    if text.startswith("```") and text.endswith("```"):
+        return text[3:-3].strip()
+    return text.strip()
+
 def parse_pet_embed(embed):
-    # Extract fields by name
-    name = None
-    mutation = None
-    dps = None
-    tier = None
-    jobId = None
-    placeId = None
+    name = mutation = dps = tier = jobId = placeId = None
     players = None
 
     for field in embed.fields:
-        if "Name" in field.name:
-            name = field.value.strip()
-        elif "Mutation" in field.name:
-            mutation = field.value.strip()
-        elif "Money" in field.name or "Per Sec" in field.name:
-            dps = field.value.strip()
-        elif "Tier" in field.name:
-            tier = field.value.strip()
-        elif "Players" in field.name:
-            # Expect format like "2/8"
-            m = re.match(r"(\d+)/(\d+)", field.value.strip())
+        fname = field.name.strip().lower()
+        fvalue = field.value.strip()
+        if "name" in fname:
+            name = fvalue
+        elif "mutation" in fname:
+            mutation = fvalue
+        elif "generation" in fname:  # Generation ($ PER SECOND)
+            dps = fvalue
+        elif "tier" in fname:
+            tier = fvalue
+        elif "players" in fname:
+            m = re.match(r"(\d+)/(\d+)", fvalue)
             if m:
                 players = {
                     "current": int(m.group(1)),
                     "max": int(m.group(2))
                 }
-        elif "JOBID" in field.name:
-            jobId = field.value.strip()
-        elif "Join Script" in field.name:
-            # Example: game:GetService("TeleportService"):TeleportToPlaceInstance(109983668079237, "09f2f0bd-b9ee-44b8-9f8f-048f835bd5ee", ...)
-            m = re.search(r'TeleportToPlaceInstance\((\d+),\s*"([\w-]+)', field.value)
+        elif "jobid" in fname:
+            jobId = strip_code_block(fvalue)
+        elif "join script" in fname:
+            script = strip_code_block(fvalue)
+            m = re.search(r'TeleportToPlaceInstance\((\d+),\s*"([\w-]+)', script)
             if m:
                 placeId = m.group(1)
                 jobId2 = m.group(2)
-            else:
-                placeId = jobId2 = None
-        # add more as needed
+                # Prefer directly parsed JobId from script if not found above
+                if not jobId and jobId2:
+                    jobId = jobId2
+        # You can also extract from "Join Link" if needed
 
-    # Only send if players is in range: 3-7
     if players and (3 <= players["current"] <= 7):
         if name and jobId and placeId:
             return {
@@ -72,11 +72,9 @@ class PetClient(discord.Client):
         if message.channel.id != CHANNEL_ID:
             return
 
-        # Check embeds
         for embed in message.embeds:
             pet = parse_pet_embed(embed)
             if pet:
-                # Deduplicate by jobId and name
                 if not any(p["jobId"] == pet["jobId"] and p["name"] == pet["name"] for p in pet_servers):
                     pet_servers.append(pet)
                     print(f"Added pet: {pet['name']} {pet['jobId']} {pet['players']}")
@@ -89,6 +87,9 @@ def recent_pets():
     import time
     now = time.time()
     filtered = [p for p in pet_servers if now - p["timestamp"] < 900]
+    # Optionally: you can add "time_found_ago" to each pet
+    for p in filtered:
+        p["time_found_ago"] = int(now - p["timestamp"])
     return jsonify(filtered)
 
 def run_flask():

@@ -1,23 +1,24 @@
 import discord
 import re
 import os
-from flask import Flask, jsonify
+from fastapi import FastAPI, Response
 from threading import Thread
+import uvicorn
+import time
+import json
 
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
-CHANNEL_ID = 1417960188085796895  # Replace with your Discord channel ID
+CHANNEL_ID = 1417960188085796895
 
-app = Flask(__name__)
+app = FastAPI()
 pet_servers = []
 
 def strip_code_block(text):
-    # Remove Discord code blocks and whitespace
     return text.replace("```lua", "").replace("```", "").replace("\n", "").replace("\r", "").strip()
 
 def parse_pet_embed(embed):
     name = mutation = dps = tier = jobId = placeId = joinScript = None
     players = None
-
     for field in embed.fields:
         fname = field.name.strip().lower()
         fvalue = field.value.strip()
@@ -25,7 +26,7 @@ def parse_pet_embed(embed):
             name = fvalue
         elif "mutation" in fname:
             mutation = fvalue
-        elif "generation" in fname:  # Generation ($ PER SECOND)
+        elif "generation" in fname or "per sec" in fname or "money" in fname or "dps" in fname:
             dps = fvalue
         elif "tier" in fname:
             tier = fvalue
@@ -40,16 +41,13 @@ def parse_pet_embed(embed):
             jobId = strip_code_block(fvalue)
         elif "join script" in fname:
             joinScript = strip_code_block(fvalue)
-            # Also parse PlaceId and JobId from joinScript for extra safety
             m = re.search(r'TeleportToPlaceInstance\((\d+),\s*["\']?([\w-]+)["\']?', joinScript)
             if m:
                 placeId = m.group(1)
                 jobId2 = m.group(2)
-                # Prefer directly parsed JobId from script if not found above
                 if not jobId and jobId2:
                     jobId = jobId2
-
-    if players and (3 <= players["current"] <= 7):
+    if players and (3 <= players["current"] <= 8):  # Accept up to 8 players for your image
         if name and jobId and placeId:
             return {
                 "name": name,
@@ -66,37 +64,33 @@ def parse_pet_embed(embed):
 
 class PetClient(discord.Client):
     async def on_ready(self):
-        print(f'Logged in as {self.user}')
+        print(f'Logged in as {self.user} (ID: {self.user.id})')
 
     async def on_message(self, message):
-        if message.channel.id != CHANNEL_ID:
-            return
+        if message.channel.id == CHANNEL_ID:
+            for embed in message.embeds:
+                pet = parse_pet_embed(embed)
+                if pet:
+                    if not any(p["jobId"] == pet["jobId"] and p["name"] == pet["name"] for p in pet_servers):
+                        pet_servers.append(pet)
+                        if len(pet_servers) > 60:
+                            pet_servers.pop(0)
+                    break
 
-        for embed in message.embeds:
-            pet = parse_pet_embed(embed)
-            if pet:
-                if not any(p["jobId"] == pet["jobId"] and p["name"] == pet["name"] for p in pet_servers):
-                    pet_servers.append(pet)
-                    print(f"Added pet: {pet['name']} {pet['jobId']} {pet['players']}")
-                if len(pet_servers) > 20:
-                    pet_servers.pop(0)
-                break
-
-@app.route('/recent-pets')
-def recent_pets():
-    import time
+@app.get("/recent-pets")
+async def recent_pets():
     now = time.time()
     filtered = [p for p in pet_servers if now - p["timestamp"] < 900]
-    # Optionally: you can add "time_found_ago" to each pet
     for p in filtered:
         p["time_found_ago"] = int(now - p["timestamp"])
-    return jsonify(filtered)
+    ndjson = "\n".join(json.dumps(p, ensure_ascii=False) for p in filtered)
+    return Response(content=ndjson, media_type="application/x-ndjson")
 
-def run_flask():
-    app.run(host='0.0.0.0', port=8080)
+def run_api():
+    uvicorn.run(app, host="0.0.0.0", port=8080, workers=1)
 
 if __name__ == "__main__":
-    Thread(target=run_flask, daemon=True).start()
+    Thread(target=run_api, daemon=True).start()
     intents = discord.Intents.default()
     intents.message_content = True
     client = PetClient(intents=intents)

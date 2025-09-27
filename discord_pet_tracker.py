@@ -13,53 +13,50 @@ CHANNEL_ID = 1417960188085796895
 app = FastAPI()
 pet_servers = []
 
-def strip_code_block(text):
-    return text.replace("```lua", "").replace("```", "").replace("\n", "").replace("\r", "").strip()
+def find_field(fields, key):
+    key = key.lower()
+    for field in fields:
+        fname = field.name.strip().lower()
+        if key in fname:
+            return field.value.strip()
+    return None
 
 def parse_pet_embed(embed):
-    name = mutation = dps = tier = jobId = placeId = joinScript = None
+    name = find_field(embed.fields, "name")
+    mutation = find_field(embed.fields, "mutation")
+    dps = find_field(embed.fields, "generation")
+    tier = find_field(embed.fields, "tier")
+    players_str = find_field(embed.fields, "players")
+    jobId = find_field(embed.fields, "jobid")
+    joinScript = find_field(embed.fields, "join script")
+    placeId = None
+    if joinScript:
+        m = re.search(r'TeleportToPlaceInstance\((\d+),\s*["\']?([\w-]+)["\']?', joinScript)
+        if m:
+            placeId = m.group(1)
+            jobId2 = m.group(2)
+            if not jobId and jobId2:
+                jobId = jobId2
     players = None
-    for field in embed.fields:
-        fname = field.name.strip().lower()
-        fvalue = field.value.strip()
-        if "name" in fname:
-            name = fvalue
-        elif "mutation" in fname:
-            mutation = fvalue
-        elif "generation" in fname or "per sec" in fname or "money" in fname or "dps" in fname:
-            dps = fvalue
-        elif "tier" in fname:
-            tier = fvalue
-        elif "players" in fname:
-            m = re.match(r"(\d+)/(\d+)", fvalue)
-            if m:
-                players = {
-                    "current": int(m.group(1)),
-                    "max": int(m.group(2))
-                }
-        elif "jobid" in fname:
-            jobId = strip_code_block(fvalue)
-        elif "join script" in fname:
-            joinScript = strip_code_block(fvalue)
-            m = re.search(r'TeleportToPlaceInstance\((\d+),\s*["\']?([\w-]+)["\']?', joinScript)
-            if m:
-                placeId = m.group(1)
-                jobId2 = m.group(2)
-                if not jobId and jobId2:
-                    jobId = jobId2
-    if players and (3 <= players["current"] <= 8):
-        if name and jobId and placeId:
-            return {
-                "name": name,
-                "mutation": mutation or "",
-                "dps": dps or "",
-                "tier": tier or "",
-                "players": f'{players["current"]}/{players["max"]}',
-                "jobId": jobId,
-                "placeId": placeId,
-                "joinScript": joinScript or "",
-                "timestamp": discord.utils.utcnow().timestamp(),
+    if players_str:
+        m = re.match(r"(\d+)/(\d+)", players_str)
+        if m:
+            players = {
+                "current": int(m.group(1)),
+                "max": int(m.group(2))
             }
+    if players and name and jobId and placeId:
+        return {
+            "name": name,
+            "mutation": mutation or "",
+            "dps": dps or "",
+            "tier": tier or "",
+            "players": f'{players["current"]}/{players["max"]}',
+            "jobId": jobId,
+            "placeId": placeId,
+            "joinScript": joinScript or "",
+            "timestamp": discord.utils.utcnow().timestamp(),
+        }
     return None
 
 class PetClient(discord.Client):

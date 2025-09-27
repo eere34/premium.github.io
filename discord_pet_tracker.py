@@ -47,7 +47,7 @@ def parse_pet_embed(embed):
                 jobId2 = m.group(2)
                 if not jobId and jobId2:
                     jobId = jobId2
-    if players and (3 <= players["current"] <= 8):  # Accept up to 8 players for your image
+    if players and (3 <= players["current"] <= 8):
         if name and jobId and placeId:
             return {
                 "name": name,
@@ -84,7 +84,7 @@ async def recent_pets():
     for p in filtered:
         p["time_found_ago"] = int(now - p["timestamp"])
     ndjson = "\n".join(json.dumps(p, ensure_ascii=False) for p in filtered)
-    return Response(content=ndjson, media_type="application/x-ndjson")
+    return Response(content=ndjson, media_type="text/plain")
 
 def run_api():
     uvicorn.run(app, host="0.0.0.0", port=8080, workers=1)

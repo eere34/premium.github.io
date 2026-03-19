@@ -1,5 +1,7 @@
-require('dotenv').config();
-const express = require('express');
+import 'dotenv/config';
+import express from 'express';
+import { startBot } from './discord_user_whitelist_bot.js';
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -10,7 +12,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🌐 Web server listening on port ${PORT}`);
-  require('./discord_user_whitelist.js');
+  await startBot();
 });

@@ -10,9 +10,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// Start web server, then the bot
 app.listen(PORT, () => {
   console.log(`🌐 Web server listening on port ${PORT}`);
-  // Start the Discord bot after web server is up
-  require('./discord_user_manager.js');
+  require('./discord_user_whitelist.js');
 });

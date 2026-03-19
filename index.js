@@ -3,8 +3,8 @@ const axios = require('axios');
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const OWNER = 'fjruie';
-const REPO = 'deadrailsuser';
+const OWNER = 'eere34';
+const REPO = 'premium.github.io';
 const FILEPATH = 'user.json';
 const ALLOWED_ROLE_ID = '1483977797901877288';
 

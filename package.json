@@ -1,6 +1,7 @@
 {
   "name": "discord-github-whitelist-bot",
   "version": "1.0.0",
+  "type": "module",
   "main": "start.js",
   "scripts": {
     "start": "node start.js"

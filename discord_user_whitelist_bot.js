@@ -112,7 +112,7 @@ export async function startBot() {
   });
 
   client.once('ready', () => {
-    console.log(`Bot is online as ${client.user.tag}`);
+    console.log(`Bot is online a ${client.user.tag}`);
   });
 
   await client.login(DISCORD_TOKEN);

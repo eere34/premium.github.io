@@ -7,7 +7,8 @@ export async function startBot() {
   const OWNER = 'eere34';
   const REPO = 'premium.github.io';
   const FILEPATH = 'user.json';
-  const ALLOWED_ROLE_ID = '1483977797901877288';
+  const ALLOWED_ROLE_ID = '1485288512839225425';
+  const ALLOWED_GUILD_ID = '1485071702227554427';
 
   const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
@@ -43,14 +44,21 @@ export async function startBot() {
     });
   }
 
-  function hasAllowedRole(message) {
-    if (!message.member) return false;
-    return message.member.roles.cache.has(ALLOWED_ROLE_ID);
+  function isAllowed(message) {
+    if (
+      !message.guild
+      || message.guild.id !== ALLOWED_GUILD_ID
+      || !message.member
+      || !message.member.roles.cache.has(ALLOWED_ROLE_ID)
+    ) {
+      return false;
+    }
+    return true;
   }
 
   client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
-    if (!hasAllowedRole(message)) return;
+    if (!isAllowed(message)) return;
 
     if (message.content.startsWith('.add ')) {
       const username = message.content.split(' ')[1];
@@ -112,7 +120,7 @@ export async function startBot() {
   });
 
   client.once('ready', () => {
-    console.log(`Bot is online a ${client.user.tag}`);
+    console.log(`Bot is online as ${client.user.tag}`);
   });
 
   await client.login(DISCORD_TOKEN);

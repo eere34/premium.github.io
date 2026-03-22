@@ -10,12 +10,20 @@ export async function startBot() {
   const ALLOWED_ROLE_ID = '1485288512839225425';
   const ALLOWED_GUILD_ID = '1485071702227554427';
 
+  if (!DISCORD_TOKEN) {
+    console.error('❌ DISCORD_TOKEN is not set! Bot cannot start.');
+    return;
+  }
+  if (!GITHUB_TOKEN) {
+    console.error('❌ GITHUB_TOKEN is not set! Bot cannot update whitelist.');
+  }
+
   const client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.MessageContent,
-      GatewayIntentBits.GuildMembers    // 🔥 REQUIRED!
+      GatewayIntentBits.GuildMembers,
     ],
   });
 
@@ -62,13 +70,8 @@ export async function startBot() {
   }
 
   client.on('messageCreate', async (message) => {
-    // --- Add debug logging:
-    console.log(`Got message: "${message.content}" from ${message.author.tag}, member: ${!!message.member}, guild: ${message.guild && message.guild.id}`);
     if (message.author.bot) return;
-    if (!isAllowed(message)) {
-      console.log('Denied:', message.author.tag, message.guild && message.guild.id, message.member && message.member.roles.cache.map(r=>r.id));
-      return;
-    }
+    if (!isAllowed(message)) return;
 
     if (message.content.startsWith('.add ')) {
       const username = message.content.split(' ')[1];
@@ -84,7 +87,7 @@ export async function startBot() {
         return message.reply(`${username} added to the whitelist!`);
       } catch (err) {
         console.error(err);
-        return message.reply('❌ Failed to update the whitelist. (Check logs or permissions)');
+        return message.reply('Failed to update the whitelist. Check logs or permissions.');
       }
     }
 
@@ -103,7 +106,7 @@ export async function startBot() {
         return message.reply(`${username} removed from the whitelist!`);
       } catch (err) {
         console.error(err);
-        return message.reply('❌ Failed to update the whitelist. (Check logs or permissions)');
+        return message.reply('Failed to update the whitelist. Check logs or permissions.');
       }
     }
 
@@ -124,14 +127,22 @@ export async function startBot() {
         }
       } catch (err) {
         console.error(err);
-        return message.reply('❌ Could not fetch the whitelist.');
+        return message.reply('Could not fetch the whitelist.');
       }
     }
+  });
+
+  client.on('error', (err) => {
+    console.error('Discord client error:', err);
   });
 
   client.once('ready', () => {
     console.log(`Bot is online as ${client.user.tag}`);
   });
 
-  await client.login(DISCORD_TOKEN);
+  try {
+    await client.login(DISCORD_TOKEN);
+  } catch (err) {
+    console.error('❌ Failed to login to Discord:', err.message);
+  }
 }

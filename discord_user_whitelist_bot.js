@@ -11,7 +11,12 @@ export async function startBot() {
   const ALLOWED_GUILD_ID = '1485071702227554427';
 
   const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.MessageContent,
+      GatewayIntentBits.GuildMembers    // 🔥 REQUIRED!
+    ],
   });
 
   async function getFile() {
@@ -57,8 +62,13 @@ export async function startBot() {
   }
 
   client.on('messageCreate', async (message) => {
+    // --- Add debug logging:
+    console.log(`Got message: "${message.content}" from ${message.author.tag}, member: ${!!message.member}, guild: ${message.guild && message.guild.id}`);
     if (message.author.bot) return;
-    if (!isAllowed(message)) return;
+    if (!isAllowed(message)) {
+      console.log('Denied:', message.author.tag, message.guild && message.guild.id, message.member && message.member.roles.cache.map(r=>r.id));
+      return;
+    }
 
     if (message.content.startsWith('.add ')) {
       const username = message.content.split(' ')[1];

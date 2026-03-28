@@ -14,62 +14,20 @@ const CHANNELS = {
   'adoptme': '1453245039974027366'
 };
 const stats = {
-  '99nights': {
-    minute: { executions: [], users: new Set() },
-    hour: { executions: [], users: new Set() },
-    day: { executions: [], users: new Set() }
-  },
-  'inkgames': {
-    minute: { executions: [], users: new Set() },
-    hour: { executions: [], users: new Set() },
-    day: { executions: [], users: new Set() }
-  },
-  'steala': {
-    minute: { executions: [], users: new Set() },
-    hour: { executions: [], users: new Set() },
-    day: { executions: [], users: new Set() }
-  },
-  'forsaken': {
-    minute: { executions: [], users: new Set() },
-    hour: { executions: [], users: new Set() },
-    day: { executions: [], users: new Set() }
-  },
-  'deadrails': {
-    minute: { executions: [], users: new Set() },
-    hour: { executions: [], users: new Set() },
-    day: { executions: [], users: new Set() }
-  },
-  'adoptme': {
-    minute: { executions: [], users: new Set() },
-    hour: { executions: [], users: new Set() },
-    day: { executions: [], users: new Set() }
-  }
+  '99nights': { minute: { executions: [], users: new Set() }, hour: { executions: [], users: new Set() }, day: { executions: [], users: new Set() } },
+  'inkgames': { minute: { executions: [], users: new Set() }, hour: { executions: [], users: new Set() }, day: { executions: [], users: new Set() } },
+  'steala': { minute: { executions: [], users: new Set() }, hour: { executions: [], users: new Set() }, day: { executions: [], users: new Set() } },
+  'forsaken': { minute: { executions: [], users: new Set() }, hour: { executions: [], users: new Set() }, day: { executions: [], users: new Set() } },
+  'deadrails': { minute: { executions: [], users: new Set() }, hour: { executions: [], users: new Set() }, day: { executions: [], users: new Set() } },
+  'adoptme': { minute: { executions: [], users: new Set() }, hour: { executions: [], users: new Set() }, day: { executions: [], users: new Set() } }
 };
 const previousStats = {
-  '99nights': {
-    hour: { executions: 0, users: 0, timestamp: 0 },
-    day: { executions: 0, users: 0, timestamp: 0 }
-  },
-  'inkgames': {
-    hour: { executions: 0, users: 0, timestamp: 0 },
-    day: { executions: 0, users: 0, timestamp: 0 }
-  },
-  'steala': {
-    hour: { executions: 0, users: 0, timestamp: 0 },
-    day: { executions: 0, users: 0, timestamp: 0 }
-  },
-  'forsaken': {
-    hour: { executions: 0, users: 0, timestamp: 0 },
-    day: { executions: 0, users: 0, timestamp: 0 }
-  },
-  'deadrails': {
-    hour: { executions: 0, users: 0, timestamp: 0 },
-    day: { executions: 0, users: 0, timestamp: 0 }
-  },
-  'adoptme': {
-    hour: { executions: 0, users: 0, timestamp: 0 },
-    day: { executions: 0, users: 0, timestamp: 0 }
-  }
+  '99nights': { hour: { executions: 0, users: 0, timestamp: 0 }, day: { executions: 0, users: 0, timestamp: 0 } },
+  'inkgames': { hour: { executions: 0, users: 0, timestamp: 0 }, day: { executions: 0, users: 0, timestamp: 0 } },
+  'steala': { hour: { executions: 0, users: 0, timestamp: 0 }, day: { executions: 0, users: 0, timestamp: 0 } },
+  'forsaken': { hour: { executions: 0, users: 0, timestamp: 0 }, day: { executions: 0, users: 0, timestamp: 0 } },
+  'deadrails': { hour: { executions: 0, users: 0, timestamp: 0 }, day: { executions: 0, users: 0, timestamp: 0 } },
+  'adoptme': { hour: { executions: 0, users: 0, timestamp: 0 }, day: { executions: 0, users: 0, timestamp: 0 } }
 };
 const ONE_MINUTE = 60 * 1000;
 const ONE_HOUR = 60 * ONE_MINUTE;
@@ -372,195 +330,197 @@ function isAllowed(message) {
   }
   return true;
 }
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers,
-  ],
-});
-let lastHourIndex = 0;
-let lastDayIndex = 0;
-client.on('ready', async () => {
-  const now = Date.now();
-  lastHourIndex = Math.floor(now / ONE_HOUR);
-  lastDayIndex = Math.floor(now / ONE_DAY);
-  cleanOldStats();
-  for (const game in stats) {
-    previousStats[game].hour = {
-      executions: stats[game].hour.executions.length,
-      users: stats[game].hour.users.size,
-      timestamp: now
-    };
-    previousStats[game].day = {
-      executions: stats[game].day.executions.length,
-      users: stats[game].day.users.size,
-      timestamp: now
-    };
-  }
-});
-client.on('messageCreate', async (message) => {
-  if (message.author?.bot && !message.webhookId) return;
-  if (message.content === '!stats') {
+export async function startBot() {
+  const client = new Client({
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.MessageContent,
+      GatewayIntentBits.GuildMembers,
+    ],
+  });
+  let lastHourIndex = 0;
+  let lastDayIndex = 0;
+  client.on('ready', async () => {
+    const now = Date.now();
+    lastHourIndex = Math.floor(now / ONE_HOUR);
+    lastDayIndex = Math.floor(now / ONE_DAY);
+    cleanOldStats();
+    for (const game in stats) {
+      previousStats[game].hour = {
+        executions: stats[game].hour.executions.length,
+        users: stats[game].hour.users.size,
+        timestamp: now
+      };
+      previousStats[game].day = {
+        executions: stats[game].day.executions.length,
+        users: stats[game].day.users.size,
+        timestamp: now
+      };
+    }
+  });
+  client.on('messageCreate', async (message) => {
+    if (message.author?.bot && !message.webhookId) return;
+    if (message.content === '!stats') {
+      try {
+        await message.channel.send(getStatsMessage());
+      } catch (err) {}
+      return;
+    }
+    if (message.content.startsWith('.add ') && isAllowed(message)) {
+      const username = message.content.split(' ')[1];
+      if (!username) return message.reply('Provide a Roblox username. Usage: .add name');
+      try {
+        const { json, sha } = await getFile();
+        json.allowed_users = json.allowed_users || [];
+        if (json.allowed_users.includes(username)) {
+          return message.reply(`${username} is already whitelisted.`);
+        }
+        json.allowed_users.push(username);
+        await updateFile(json, sha, username, 'Added');
+        return message.reply(`${username} added to the whitelist!`);
+      } catch (err) {
+        return message.reply('Failed to update the whitelist. Check logs or permissions.');
+      }
+    }
+    if (message.content.startsWith('.remove ') && isAllowed(message)) {
+      const username = message.content.split(' ')[1];
+      if (!username) return message.reply('Provide a Roblox username. Usage: .remove name');
+      try {
+        const { json, sha } = await getFile();
+        json.allowed_users = json.allowed_users || [];
+        const idx = json.allowed_users.indexOf(username);
+        if (idx === -1) {
+          return message.reply(`${username} is not in the whitelist.`);
+        }
+        json.allowed_users.splice(idx, 1);
+        await updateFile(json, sha, username, 'Removed');
+        return message.reply(`${username} removed from the whitelist!`);
+      } catch (err) {
+        return message.reply('Failed to update the whitelist. Check logs or permissions.');
+      }
+    }
+    if (message.content === '.list' && isAllowed(message)) {
+      try {
+        const { json } = await getFile();
+        const users = json.allowed_users || [];
+        if (!users.length) {
+          return message.reply('Whitelist is empty.');
+        }
+        if (users.length > 50) {
+          const text = users.join('\n');
+          const buffer = Buffer.from(text, 'utf8');
+          const attachment = new AttachmentBuilder(buffer, { name: 'allowed_users.txt' });
+          return message.reply({ content: `There are ${users.length} whitelisted users:`, files: [attachment] });
+        } else {
+          return message.reply('**Allowed users:**\n' + users.join(', '));
+        }
+      } catch (err) {
+        return message.reply('Could not fetch the whitelist.');
+      }
+    }
+    const game = getGameByChannelId(message.channel.id);
+    if (game) {
+      let username = null;
+      if (message.mentions && message.mentions.users.size > 0) {
+        const u = message.mentions.users.first();
+        if (u) username = u.username;
+      }
+      if (!username && message.embeds && message.embeds.length > 0) {
+        for (const embed of message.embeds) {
+          try {
+            username = await parseExecutionFromEmbed(embed, message);
+            if (username) break;
+          } catch (err) {}
+        }
+      }
+      if (!username && message.content) {
+        username = parseExecutionLog(message.content, message);
+        if (username && username.startsWith('<@')) {
+          const resolved = await resolveMentionToUsername(username, message);
+          if (resolved) username = resolved;
+        }
+      }
+      if (username) {
+        trackExecution(username, game);
+        if (DEBUG_NOTIFY && STATS_CHANNEL_ID) {
+          try {
+            const channel = await client.channels.fetch(STATS_CHANNEL_ID);
+            if (channel && channel.isTextBased()) {
+              await channel.send(`🔔 (DEBUG) [${getGameName(game)}] Tracked execution by: ${username}`);
+            }
+          } catch (err) {}
+        }
+      }
+    }
+  });
+  setInterval(async () => {
+    const now = Date.now();
     try {
-      await message.channel.send(getStatsMessage());
-    } catch (err) {}
-    return;
-  }
-  if (message.content.startsWith('.add ') && isAllowed(message)) {
-    const username = message.content.split(' ')[1];
-    if (!username) return message.reply('Provide a Roblox username. Usage: .add name');
-    try {
-      const { json, sha } = await getFile();
-      json.allowed_users = json.allowed_users || [];
-      if (json.allowed_users.includes(username)) {
-        return message.reply(`${username} is already whitelisted.`);
+      cleanOldStats();
+      const currentHourIndex = Math.floor(now / ONE_HOUR);
+      const currentDayIndex = Math.floor(now / ONE_DAY);
+      let hasExecutions = false;
+      for (const game in stats) {
+        if (stats[game].minute.executions.length > 0) {
+          hasExecutions = true;
+          break;
+        }
       }
-      json.allowed_users.push(username);
-      await updateFile(json, sha, username, 'Added');
-      return message.reply(`${username} added to the whitelist!`);
-    } catch (err) {
-      return message.reply('Failed to update the whitelist. Check logs or permissions.');
-    }
-  }
-  if (message.content.startsWith('.remove ') && isAllowed(message)) {
-    const username = message.content.split(' ')[1];
-    if (!username) return message.reply('Provide a Roblox username. Usage: .remove name');
-    try {
-      const { json, sha } = await getFile();
-      json.allowed_users = json.allowed_users || [];
-      const idx = json.allowed_users.indexOf(username);
-      if (idx === -1) {
-        return message.reply(`${username} is not in the whitelist.`);
-      }
-      json.allowed_users.splice(idx, 1);
-      await updateFile(json, sha, username, 'Removed');
-      return message.reply(`${username} removed from the whitelist!`);
-    } catch (err) {
-      return message.reply('Failed to update the whitelist. Check logs or permissions.');
-    }
-  }
-  if (message.content === '.list' && isAllowed(message)) {
-    try {
-      const { json } = await getFile();
-      const users = json.allowed_users || [];
-      if (!users.length) {
-        return message.reply('Whitelist is empty.');
-      }
-      if (users.length > 50) {
-        const text = users.join('\n');
-        const buffer = Buffer.from(text, 'utf8');
-        const attachment = new AttachmentBuilder(buffer, { name: 'allowed_users.txt' });
-        return message.reply({ content: `There are ${users.length} whitelisted users:`, files: [attachment] });
-      } else {
-        return message.reply('**Allowed users:**\n' + users.join(', '));
-      }
-    } catch (err) {
-      return message.reply('Could not fetch the whitelist.');
-    }
-  }
-  const game = getGameByChannelId(message.channel.id);
-  if (game) {
-    let username = null;
-    if (message.mentions && message.mentions.users.size > 0) {
-      const u = message.mentions.users.first();
-      if (u) username = u.username;
-    }
-    if (!username && message.embeds && message.embeds.length > 0) {
-      for (const embed of message.embeds) {
-        try {
-          username = await parseExecutionFromEmbed(embed, message);
-          if (username) break;
-        } catch (err) {}
-      }
-    }
-    if (!username && message.content) {
-      username = parseExecutionLog(message.content, message);
-      if (username && username.startsWith('<@')) {
-        const resolved = await resolveMentionToUsername(username, message);
-        if (resolved) username = resolved;
-      }
-    }
-    if (username) {
-      trackExecution(username, game);
-      if (DEBUG_NOTIFY && STATS_CHANNEL_ID) {
+      if (STATS_CHANNEL_ID && hasExecutions) {
         try {
           const channel = await client.channels.fetch(STATS_CHANNEL_ID);
           if (channel && channel.isTextBased()) {
-            await channel.send(`🔔 (DEBUG) [${getGameName(game)}] Tracked execution by: ${username}`);
+            await channel.send(getStatsMessage());
           }
         } catch (err) {}
       }
-    }
-  }
-});
-setInterval(async () => {
-  const now = Date.now();
+      if (COMPARISON_CHANNEL_ID) {
+        if (currentHourIndex > lastHourIndex) {
+          lastHourIndex = currentHourIndex;
+          try {
+            const channel = await client.channels.fetch(COMPARISON_CHANNEL_ID);
+            if (channel && channel.isTextBased()) {
+              const comparisonMessage = getComparisonMessage();
+              await channel.send(comparisonMessage);
+            }
+          } catch (err) {}
+          for (const game in stats) {
+            previousStats[game].hour = {
+              executions: stats[game].hour.executions.length,
+              users: stats[game].hour.users.size,
+              timestamp: now
+            };
+            stats[game].hour.executions = [];
+            stats[game].hour.users = new Set();
+          }
+        }
+        if (currentDayIndex > lastDayIndex) {
+          lastDayIndex = currentDayIndex;
+          try {
+            const channel = await client.channels.fetch(COMPARISON_CHANNEL_ID);
+            if (channel && channel.isTextBased()) {
+              const header = `🌅 **New Day Started!** (${getCurrentTimeFormatted()})`;
+              const comparisonMessage = getComparisonMessage();
+              await channel.send(`${header}\n\n${comparisonMessage}`);
+            }
+          } catch (err) {}
+          for (const game in stats) {
+            previousStats[game].day = {
+              executions: stats[game].day.executions.length,
+              users: stats[game].day.users.size,
+              timestamp: now
+            };
+            stats[game].day.executions = [];
+            stats[game].day.users = new Set();
+          }
+        }
+      }
+    } catch (error) {}
+  }, ONE_MINUTE);
+  client.on('error', (err) => {});
+  client.once('ready', () => {});
   try {
-    cleanOldStats();
-    const currentHourIndex = Math.floor(now / ONE_HOUR);
-    const currentDayIndex = Math.floor(now / ONE_DAY);
-    let hasExecutions = false;
-    for (const game in stats) {
-      if (stats[game].minute.executions.length > 0) {
-        hasExecutions = true;
-        break;
-      }
-    }
-    if (STATS_CHANNEL_ID && hasExecutions) {
-      try {
-        const channel = await client.channels.fetch(STATS_CHANNEL_ID);
-        if (channel && channel.isTextBased()) {
-          await channel.send(getStatsMessage());
-        }
-      } catch (err) {}
-    }
-    if (COMPARISON_CHANNEL_ID) {
-      if (currentHourIndex > lastHourIndex) {
-        lastHourIndex = currentHourIndex;
-        try {
-          const channel = await client.channels.fetch(COMPARISON_CHANNEL_ID);
-          if (channel && channel.isTextBased()) {
-            const comparisonMessage = getComparisonMessage();
-            await channel.send(comparisonMessage);
-          }
-        } catch (err) {}
-        for (const game in stats) {
-          previousStats[game].hour = {
-            executions: stats[game].hour.executions.length,
-            users: stats[game].hour.users.size,
-            timestamp: now
-          };
-          stats[game].hour.executions = [];
-          stats[game].hour.users = new Set();
-        }
-      }
-      if (currentDayIndex > lastDayIndex) {
-        lastDayIndex = currentDayIndex;
-        try {
-          const channel = await client.channels.fetch(COMPARISON_CHANNEL_ID);
-          if (channel && channel.isTextBased()) {
-            const header = `🌅 **New Day Started!** (${getCurrentTimeFormatted()})`;
-            const comparisonMessage = getComparisonMessage();
-            await channel.send(`${header}\n\n${comparisonMessage}`);
-          }
-        } catch (err) {}
-        for (const game in stats) {
-          previousStats[game].day = {
-            executions: stats[game].day.executions.length,
-            users: stats[game].day.users.size,
-            timestamp: now
-          };
-          stats[game].day.executions = [];
-          stats[game].day.users = new Set();
-        }
-      }
-    }
-  } catch (error) {}
-}, ONE_MINUTE);
-client.on('error', (err) => {});
-client.once('ready', () => {});
-try {
-  await client.login(DISCORD_TOKEN);
-} catch (err) {}
+    await client.login(DISCORD_TOKEN);
+  } catch (err) {}
+}

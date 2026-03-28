@@ -1,10 +1,10 @@
-import { Client, GatewayIntentBits } from 'discord.js';
-
+import { Client, GatewayIntentBits, AttachmentBuilder } from 'discord.js';
+import axios from 'axios';
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN || '';
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 const STATS_CHANNEL_ID = '1429696356859248740';
 const COMPARISON_CHANNEL_ID = '1429967291906265230';
 const DEBUG_NOTIFY = process.env.DEBUG_NOTIFY === 'true';
-
 const CHANNELS = {
   '99nights': process.env.LOGS_CHANNEL_ID || '',
   'inkgames': '1393631891147718756',
@@ -13,7 +13,6 @@ const CHANNELS = {
   'deadrails': '1387492823141585006',
   'adoptme': '1453245039974027366'
 };
-
 const stats = {
   '99nights': {
     minute: { executions: [], users: new Set() },
@@ -46,7 +45,6 @@ const stats = {
     day: { executions: [], users: new Set() }
   }
 };
-
 const previousStats = {
   '99nights': {
     hour: { executions: 0, users: 0, timestamp: 0 },
@@ -73,11 +71,14 @@ const previousStats = {
     day: { executions: 0, users: 0, timestamp: 0 }
   }
 };
-
 const ONE_MINUTE = 60 * 1000;
 const ONE_HOUR = 60 * ONE_MINUTE;
 const ONE_DAY = 24 * ONE_HOUR;
-
+const OWNER = 'eere34';
+const REPO = 'premium.github.io';
+const FILEPATH = 'user.json';
+const ALLOWED_ROLE_ID = '1485288512839225425';
+const ALLOWED_GUILD_ID = '1485071702227554427';
 function getCurrentTimeFormatted() {
   const now = new Date();
   const year = now.getUTCFullYear();
@@ -88,7 +89,6 @@ function getCurrentTimeFormatted() {
   const seconds = String(now.getUTCSeconds()).padStart(2, '0');
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
-
 function getTimeUntilNextDayReset() {
   const now = new Date();
   const tomorrow = new Date(now);
@@ -99,7 +99,6 @@ function getTimeUntilNextDayReset() {
   const minutesUntilReset = Math.floor((msUntilReset % (1000 * 60 * 60)) / (1000 * 60));
   return `${hoursUntilReset}h ${minutesUntilReset}m`;
 }
-
 function getTimeUntilNextHour() {
   const now = new Date();
   const nextHour = new Date(now);
@@ -110,7 +109,6 @@ function getTimeUntilNextHour() {
   const secondsUntilNextHour = Math.floor((msUntilNextHour % (1000 * 60)) / 1000);
   return `${minutesUntilNextHour}m ${secondsUntilNextHour}s`;
 }
-
 function cleanOldStats() {
   const now = Date.now();
   for (const game in stats) {
@@ -122,7 +120,6 @@ function cleanOldStats() {
     stats[game].day.users = new Set([...stats[game].day.executions.map(e => e.username)]);
   }
 }
-
 async function resolveMentionToUsername(mentionText, message) {
   const idMatch = mentionText && mentionText.match(/<@!?(?<id>\d+)>/);
   if (!idMatch) return null;
@@ -138,7 +135,6 @@ async function resolveMentionToUsername(mentionText, message) {
   } catch (e) {}
   return null;
 }
-
 async function parseExecutionFromEmbed(embed, message) {
   if (!embed) return null;
   if (Array.isArray(embed.fields) && embed.fields.length > 0) {
@@ -210,7 +206,6 @@ async function parseExecutionFromEmbed(embed, message) {
   }
   return null;
 }
-
 function parseExecutionLog(messageContent, message) {
   if (!messageContent) return null;
   if (message && message.mentions && message.mentions.users && message.mentions.users.size > 0) {
@@ -232,7 +227,6 @@ function parseExecutionLog(messageContent, message) {
   if (mentionIdMatch) return `<@${mentionIdMatch.groups?.id}>`;
   return null;
 }
-
 function trackExecution(username, game) {
   const now = Date.now();
   const execution = { username, timestamp: now };
@@ -244,7 +238,6 @@ function trackExecution(username, game) {
   stats[game].day.users.add(username);
   cleanOldStats();
 }
-
 function getGameName(game) {
   const names = {
     '99nights': '99 Nights',
@@ -256,7 +249,6 @@ function getGameName(game) {
   };
   return names[game] || game;
 }
-
 function getSingleGameStats(game) {
   cleanOldStats();
   const gameName = getGameName(game);
@@ -272,7 +264,6 @@ function getSingleGameStats(game) {
 • Executions: ${stats[game].day.executions.length}
 • Unique Users: ${stats[game].day.users.size}`;
 }
-
 function getStatsMessage() {
   cleanOldStats();
   const separator = '\n\n\n';
@@ -290,7 +281,6 @@ function getStatsMessage() {
 
 ${allStats.join(separator)}`;
 }
-
 function getSingleGameComparison(game) {
   const gameName = getGameName(game);
   const currentHourExecutions = stats[game].hour.executions.length;
@@ -318,7 +308,6 @@ ${hourUsersMessage}
 ${dayExecMessage}
 ${dayUsersMessage}`;
 }
-
 function getComparisonMessage() {
   const separator = '\n\n\n';
   const allComparisons = [
@@ -336,7 +325,6 @@ ${allComparisons.join(separator)}
 
 ⏰ **New Day Reset In:** ${timeUntilReset}`;
 }
-
 function getGameByChannelId(channelId) {
   for (const [game, id] of Object.entries(CHANNELS)) {
     if (String(id) === String(channelId)) {
@@ -345,181 +333,234 @@ function getGameByChannelId(channelId) {
   }
   return null;
 }
-
-async function startBot() {
-  console.log('[DEBUG] startBot called. DISCORD_TOKEN exists?', !!DISCORD_TOKEN, 'Length:', DISCORD_TOKEN.length);
-  if (!DISCORD_TOKEN) {
-    console.error('[ERROR] DISCORD_TOKEN is not set!');
+async function getFile() {
+  const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILEPATH}`;
+  const res = await axios.get(url, {
+    headers: {
+      Authorization: `token ${GITHUB_TOKEN}`,
+      Accept: 'application/vnd.github.v3+json',
+    },
+  });
+  const content = Buffer.from(res.data.content, 'base64').toString('utf8');
+  return {
+    json: JSON.parse(content),
+    sha: res.data.sha,
+  };
+}
+async function updateFile(newJson, sha, username, action) {
+  const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILEPATH}`;
+  const content = Buffer.from(JSON.stringify(newJson, null, 2)).toString('base64');
+  await axios.put(url, {
+    message: `[Bot] ${action} ${username} in user.json`,
+    content,
+    sha,
+  }, {
+    headers: {
+      Authorization: `token ${GITHUB_TOKEN}`,
+      Accept: 'application/vnd.github.v3+json',
+    },
+  });
+}
+function isAllowed(message) {
+  if (
+    !message.guild
+    || message.guild.id !== ALLOWED_GUILD_ID
+    || !message.member
+    || !message.member.roles.cache.has(ALLOWED_ROLE_ID)
+  ) {
+    return false;
+  }
+  return true;
+}
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+  ],
+});
+let lastHourIndex = 0;
+let lastDayIndex = 0;
+client.on('ready', async () => {
+  const now = Date.now();
+  lastHourIndex = Math.floor(now / ONE_HOUR);
+  lastDayIndex = Math.floor(now / ONE_DAY);
+  cleanOldStats();
+  for (const game in stats) {
+    previousStats[game].hour = {
+      executions: stats[game].hour.executions.length,
+      users: stats[game].hour.users.size,
+      timestamp: now
+    };
+    previousStats[game].day = {
+      executions: stats[game].day.executions.length,
+      users: stats[game].day.users.size,
+      timestamp: now
+    };
+  }
+});
+client.on('messageCreate', async (message) => {
+  if (message.author?.bot && !message.webhookId) return;
+  if (message.content === '!stats') {
+    try {
+      await message.channel.send(getStatsMessage());
+    } catch (err) {}
     return;
   }
-  const client = new Client({
-    intents: [
-      GatewayIntentBits.Guilds,
-      GatewayIntentBits.GuildMessages,
-      GatewayIntentBits.MessageContent
-    ]
-  });
-  let lastHourIndex = 0;
-  let lastDayIndex = 0;
-  client.on('ready', async () => {
-    console.log(`✅ Bot logged in as ${client.user.tag}`);
-    console.log(`📝 Monitoring channels:`);
-    console.log(`   - 99 Nights: ${CHANNELS['99nights'] || 'Not set'}`);
-    console.log(`   - iNK GAMES: ${CHANNELS['inkgames']}`);
-    console.log(`   - Steala: ${CHANNELS['steala']}`);
-    console.log(`   - Forsaken: ${CHANNELS['forsaken']}`);
-    console.log(`   - Dead Rails: ${CHANNELS['deadrails']}`);
-    console.log(`   - Adopt Me: ${CHANNELS['adoptme']}`);
-    console.log(`📊 Stats output channel: ${STATS_CHANNEL_ID || 'Not set'}`);
-    console.log(`📈 Comparison output channel: ${COMPARISON_CHANNEL_ID}`);
-    console.log(`🕒 Current time: ${getCurrentTimeFormatted()}`);
-    console.log('Bot is ready! Type !stats in any channel to see statistics.');
-    const now = Date.now();
-    lastHourIndex = Math.floor(now / ONE_HOUR);
-    lastDayIndex = Math.floor(now / ONE_DAY);
-    cleanOldStats();
-    for (const game in stats) {
-      previousStats[game].hour = {
-        executions: stats[game].hour.executions.length,
-        users: stats[game].hour.users.size,
-        timestamp: now
-      };
-      previousStats[game].day = {
-        executions: stats[game].day.executions.length,
-        users: stats[game].day.users.size,
-        timestamp: now
-      };
-    }
-  });
-  client.on('messageCreate', async (message) => {
-    if (message.author?.bot && !message.webhookId) return;
-    if (message.content === '!stats') {
-      try {
-        await message.channel.send(getStatsMessage());
-      } catch (err) {
-        console.error('Failed to send !stats reply:', err);
-      }
-      return;
-    }
-    const game = getGameByChannelId(message.channel.id);
-    if (game) {
-      let username = null;
-      if (message.mentions && message.mentions.users.size > 0) {
-        const u = message.mentions.users.first();
-        if (u) username = u.username;
-      }
-      if (!username && message.embeds && message.embeds.length > 0) {
-        for (const embed of message.embeds) {
-          try {
-            username = await parseExecutionFromEmbed(embed, message);
-            if (username) break;
-          } catch (err) {}
-        }
-      }
-      if (!username && message.content) {
-        username = parseExecutionLog(message.content, message);
-        if (username && username.startsWith('<@')) {
-          const resolved = await resolveMentionToUsername(username, message);
-          if (resolved) username = resolved;
-        }
-      }
-      if (username) {
-        trackExecution(username, game);
-        if (DEBUG_NOTIFY && STATS_CHANNEL_ID) {
-          try {
-            const channel = await client.channels.fetch(STATS_CHANNEL_ID);
-            if (channel && channel.isTextBased()) {
-              await channel.send(`🔔 (DEBUG) [${getGameName(game)}] Tracked execution by: ${username}`);
-            }
-          } catch (err) {
-            console.error('Failed to send DEBUG_NOTIFY message:', err?.message || err);
-          }
-        }
-      }
-    }
-  });
-  setInterval(async () => {
-    const now = Date.now();
+  if (message.content.startsWith('.add ') && isAllowed(message)) {
+    const username = message.content.split(' ')[1];
+    if (!username) return message.reply('Provide a Roblox username. Usage: .add name');
     try {
-      cleanOldStats();
-      const currentHourIndex = Math.floor(now / ONE_HOUR);
-      const currentDayIndex = Math.floor(now / ONE_DAY);
-      let hasExecutions = false;
-      for (const game in stats) {
-        if (stats[game].minute.executions.length > 0) {
-          hasExecutions = true;
-          break;
-        }
+      const { json, sha } = await getFile();
+      json.allowed_users = json.allowed_users || [];
+      if (json.allowed_users.includes(username)) {
+        return message.reply(`${username} is already whitelisted.`);
       }
-      if (STATS_CHANNEL_ID && hasExecutions) {
+      json.allowed_users.push(username);
+      await updateFile(json, sha, username, 'Added');
+      return message.reply(`${username} added to the whitelist!`);
+    } catch (err) {
+      return message.reply('Failed to update the whitelist. Check logs or permissions.');
+    }
+  }
+  if (message.content.startsWith('.remove ') && isAllowed(message)) {
+    const username = message.content.split(' ')[1];
+    if (!username) return message.reply('Provide a Roblox username. Usage: .remove name');
+    try {
+      const { json, sha } = await getFile();
+      json.allowed_users = json.allowed_users || [];
+      const idx = json.allowed_users.indexOf(username);
+      if (idx === -1) {
+        return message.reply(`${username} is not in the whitelist.`);
+      }
+      json.allowed_users.splice(idx, 1);
+      await updateFile(json, sha, username, 'Removed');
+      return message.reply(`${username} removed from the whitelist!`);
+    } catch (err) {
+      return message.reply('Failed to update the whitelist. Check logs or permissions.');
+    }
+  }
+  if (message.content === '.list' && isAllowed(message)) {
+    try {
+      const { json } = await getFile();
+      const users = json.allowed_users || [];
+      if (!users.length) {
+        return message.reply('Whitelist is empty.');
+      }
+      if (users.length > 50) {
+        const text = users.join('\n');
+        const buffer = Buffer.from(text, 'utf8');
+        const attachment = new AttachmentBuilder(buffer, { name: 'allowed_users.txt' });
+        return message.reply({ content: `There are ${users.length} whitelisted users:`, files: [attachment] });
+      } else {
+        return message.reply('**Allowed users:**\n' + users.join(', '));
+      }
+    } catch (err) {
+      return message.reply('Could not fetch the whitelist.');
+    }
+  }
+  const game = getGameByChannelId(message.channel.id);
+  if (game) {
+    let username = null;
+    if (message.mentions && message.mentions.users.size > 0) {
+      const u = message.mentions.users.first();
+      if (u) username = u.username;
+    }
+    if (!username && message.embeds && message.embeds.length > 0) {
+      for (const embed of message.embeds) {
+        try {
+          username = await parseExecutionFromEmbed(embed, message);
+          if (username) break;
+        } catch (err) {}
+      }
+    }
+    if (!username && message.content) {
+      username = parseExecutionLog(message.content, message);
+      if (username && username.startsWith('<@')) {
+        const resolved = await resolveMentionToUsername(username, message);
+        if (resolved) username = resolved;
+      }
+    }
+    if (username) {
+      trackExecution(username, game);
+      if (DEBUG_NOTIFY && STATS_CHANNEL_ID) {
         try {
           const channel = await client.channels.fetch(STATS_CHANNEL_ID);
           if (channel && channel.isTextBased()) {
-            await channel.send(getStatsMessage());
+            await channel.send(`🔔 (DEBUG) [${getGameName(game)}] Tracked execution by: ${username}`);
           }
-        } catch (err) {
-          console.error('Failed to send stats message:', err?.message || err);
-        }
+        } catch (err) {}
       }
-      if (COMPARISON_CHANNEL_ID) {
-        if (currentHourIndex > lastHourIndex) {
-          lastHourIndex = currentHourIndex;
-          try {
-            const channel = await client.channels.fetch(COMPARISON_CHANNEL_ID);
-            if (channel && channel.isTextBased()) {
-              const comparisonMessage = getComparisonMessage();
-              await channel.send(comparisonMessage);
-              console.log(`✅ [${getCurrentTimeFormatted()}] Sent hourly comparison to channel ${COMPARISON_CHANNEL_ID}`);
-            }
-          } catch (err) {
-            console.error('Failed to send hourly comparison message:', err?.message || err);
-            console.error('Channel ID:', COMPARISON_CHANNEL_ID);
-          }
-          for (const game in stats) {
-            previousStats[game].hour = {
-              executions: stats[game].hour.executions.length,
-              users: stats[game].hour.users.size,
-              timestamp: now
-            };
-            stats[game].hour.executions = [];
-            stats[game].hour.users = new Set();
-          }
-        }
-        if (currentDayIndex > lastDayIndex) {
-          lastDayIndex = currentDayIndex;
-          try {
-            const channel = await client.channels.fetch(COMPARISON_CHANNEL_ID);
-            if (channel && channel.isTextBased()) {
-              const header = `🌅 **New Day Started!** (${getCurrentTimeFormatted()})`;
-              const comparisonMessage = getComparisonMessage();
-              await channel.send(`${header}\n\n${comparisonMessage}`);
-              console.log(`✅ [${getCurrentTimeFormatted()}] Sent daily comparison to channel ${COMPARISON_CHANNEL_ID}`);
-            }
-          } catch (err) {
-            console.error('Failed to send daily comparison message:', err?.message || err);
-            console.error('Channel ID:', COMPARISON_CHANNEL_ID);
-          }
-          for (const game in stats) {
-            previousStats[game].day = {
-              executions: stats[game].day.executions.length,
-              users: stats[game].day.users.size,
-              timestamp: now
-            };
-            stats[game].day.executions = [];
-            stats[game].day.users = new Set();
-          }
-        }
-      }
-    } catch (error) {
-      console.error(`Error [${getCurrentTimeFormatted()}]:`, error?.message || error);
     }
-  }, ONE_MINUTE);
-  try {
-    await client.login(DISCORD_TOKEN);
-    console.log('[DEBUG] Bot login succeeded!');
-  } catch (err) {
-    console.error('[ERROR] Bot failed to login:', err);
   }
-}
-
-export { startBot };
+});
+setInterval(async () => {
+  const now = Date.now();
+  try {
+    cleanOldStats();
+    const currentHourIndex = Math.floor(now / ONE_HOUR);
+    const currentDayIndex = Math.floor(now / ONE_DAY);
+    let hasExecutions = false;
+    for (const game in stats) {
+      if (stats[game].minute.executions.length > 0) {
+        hasExecutions = true;
+        break;
+      }
+    }
+    if (STATS_CHANNEL_ID && hasExecutions) {
+      try {
+        const channel = await client.channels.fetch(STATS_CHANNEL_ID);
+        if (channel && channel.isTextBased()) {
+          await channel.send(getStatsMessage());
+        }
+      } catch (err) {}
+    }
+    if (COMPARISON_CHANNEL_ID) {
+      if (currentHourIndex > lastHourIndex) {
+        lastHourIndex = currentHourIndex;
+        try {
+          const channel = await client.channels.fetch(COMPARISON_CHANNEL_ID);
+          if (channel && channel.isTextBased()) {
+            const comparisonMessage = getComparisonMessage();
+            await channel.send(comparisonMessage);
+          }
+        } catch (err) {}
+        for (const game in stats) {
+          previousStats[game].hour = {
+            executions: stats[game].hour.executions.length,
+            users: stats[game].hour.users.size,
+            timestamp: now
+          };
+          stats[game].hour.executions = [];
+          stats[game].hour.users = new Set();
+        }
+      }
+      if (currentDayIndex > lastDayIndex) {
+        lastDayIndex = currentDayIndex;
+        try {
+          const channel = await client.channels.fetch(COMPARISON_CHANNEL_ID);
+          if (channel && channel.isTextBased()) {
+            const header = `🌅 **New Day Started!** (${getCurrentTimeFormatted()})`;
+            const comparisonMessage = getComparisonMessage();
+            await channel.send(`${header}\n\n${comparisonMessage}`);
+          }
+        } catch (err) {}
+        for (const game in stats) {
+          previousStats[game].day = {
+            executions: stats[game].day.executions.length,
+            users: stats[game].day.users.size,
+            timestamp: now
+          };
+          stats[game].day.executions = [];
+          stats[game].day.users = new Set();
+        }
+      }
+    }
+  } catch (error) {}
+}, ONE_MINUTE);
+client.on('error', (err) => {});
+client.once('ready', () => {});
+try {
+  await client.login(DISCORD_TOKEN);
+} catch (err) {}

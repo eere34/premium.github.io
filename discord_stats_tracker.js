@@ -11,7 +11,8 @@ const CHANNELS = {
   'steala': '1400585444001054730',
   'forsaken': '1396894093900120105',
   'deadrails': '1387492823141585006',
-  'adoptme': '1453245039974027366'
+  'adoptme': '1453245039974027366',
+  'bitesbynight': '1489108637178925268'
 };
 const stats = {
   '99nights': { minute: { executions: [], users: new Set() }, hour: { executions: [], users: new Set() }, day: { executions: [], users: new Set() } },
@@ -19,7 +20,8 @@ const stats = {
   'steala': { minute: { executions: [], users: new Set() }, hour: { executions: [], users: new Set() }, day: { executions: [], users: new Set() } },
   'forsaken': { minute: { executions: [], users: new Set() }, hour: { executions: [], users: new Set() }, day: { executions: [], users: new Set() } },
   'deadrails': { minute: { executions: [], users: new Set() }, hour: { executions: [], users: new Set() }, day: { executions: [], users: new Set() } },
-  'adoptme': { minute: { executions: [], users: new Set() }, hour: { executions: [], users: new Set() }, day: { executions: [], users: new Set() } }
+  'adoptme': { minute: { executions: [], users: new Set() }, hour: { executions: [], users: new Set() }, day: { executions: [], users: new Set() } },
+  'bitesbynight': { minute: { executions: [], users: new Set() }, hour: { executions: [], users: new Set() }, day: { executions: [], users: new Set() } }
 };
 const previousStats = {
   '99nights': { hour: { executions: 0, users: 0, timestamp: 0 }, day: { executions: 0, users: 0, timestamp: 0 } },
@@ -27,7 +29,8 @@ const previousStats = {
   'steala': { hour: { executions: 0, users: 0, timestamp: 0 }, day: { executions: 0, users: 0, timestamp: 0 } },
   'forsaken': { hour: { executions: 0, users: 0, timestamp: 0 }, day: { executions: 0, users: 0, timestamp: 0 } },
   'deadrails': { hour: { executions: 0, users: 0, timestamp: 0 }, day: { executions: 0, users: 0, timestamp: 0 } },
-  'adoptme': { hour: { executions: 0, users: 0, timestamp: 0 }, day: { executions: 0, users: 0, timestamp: 0 } }
+  'adoptme': { hour: { executions: 0, users: 0, timestamp: 0 }, day: { executions: 0, users: 0, timestamp: 0 } },
+  'bitesbynight': { hour: { executions: 0, users: 0, timestamp: 0 }, day: { executions: 0, users: 0, timestamp: 0 } }
 };
 const ONE_MINUTE = 60 * 1000;
 const ONE_HOUR = 60 * ONE_MINUTE;
@@ -203,7 +206,8 @@ function getGameName(game) {
     'steala': 'Steala',
     'forsaken': 'Forsaken',
     'deadrails': 'Dead Rails',
-    'adoptme': 'Adopt Me'
+    'adoptme': 'Adopt Me',
+    'bitesbynight': 'Bites by Night'
   };
   return names[game] || game;
 }
@@ -231,7 +235,8 @@ function getStatsMessage() {
     getSingleGameStats('steala'),
     getSingleGameStats('forsaken'),
     getSingleGameStats('deadrails'),
-    getSingleGameStats('adoptme')
+    getSingleGameStats('adoptme'),
+    getSingleGameStats('bitesbynight')
   ];
   const timeUntilNextHour = getTimeUntilNextHour();
   return `**📊 ALL GAMES - Execution Statistics** (${getCurrentTimeFormatted()})
@@ -274,7 +279,8 @@ function getComparisonMessage() {
     getSingleGameComparison('steala'),
     getSingleGameComparison('forsaken'),
     getSingleGameComparison('deadrails'),
-    getSingleGameComparison('adoptme')
+    getSingleGameComparison('adoptme'),
+    getSingleGameComparison('bitesbynight')
   ];
   const timeUntilReset = getTimeUntilNextDayReset();
   return `**📊 ALL GAMES - Execution Trend Report** (${getCurrentTimeFormatted()})

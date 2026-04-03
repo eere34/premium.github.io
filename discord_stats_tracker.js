@@ -40,6 +40,7 @@ const REPO = 'premiumm.github.io';
 const FILEPATH = 'user.json';
 const ALLOWED_ROLE_ID = '1485288512839225425';
 const ALLOWED_GUILD_ID = '1485071702227554427';
+
 function getCurrentTimeFormatted() {
   const now = new Date();
   const year = now.getUTCFullYear();
@@ -244,51 +245,51 @@ function getStatsMessage() {
 
 ${allStats.join(separator)}`;
 }
-function getSingleGameComparison(game) {
-  const gameName = getGameName(game);
-  const currentHourExecutions = stats[game].hour.executions.length;
-  const currentHourUsers = stats[game].hour.users.size;
-  const currentDayExecutions = stats[game].day.executions.length;
-  const currentDayUsers = stats[game].day.users.size;
-  const hourExecDiff = currentHourExecutions - (previousStats[game].hour.executions || 0);
-  const hourUsersDiff = currentHourUsers - (previousStats[game].hour.users || 0);
-  const dayExecDiff = currentDayExecutions - (previousStats[game].day.executions || 0);
-  const dayUsersDiff = currentDayUsers - (previousStats[game].day.users || 0);
-  const hourExecEmoji = hourExecDiff >= 0 ? '⬆️' : '⬇️';
-  const hourUsersEmoji = hourUsersDiff >= 0 ? '⬆️' : '⬇️';
-  const dayExecEmoji = dayExecDiff >= 0 ? '⬆️' : '⬇️';
-  const dayUsersEmoji = dayUsersDiff >= 0 ? '⬆️' : '⬇️';
-  const hourExecMessage = `${hourExecEmoji} ${Math.abs(hourExecDiff)} executions ${hourExecDiff >= 0 ? 'more' : 'less'} than previous hour (Current: ${currentHourExecutions})`;
-  const hourUsersMessage = `${hourUsersEmoji} ${Math.abs(hourUsersDiff)} unique users ${hourUsersDiff >= 0 ? 'more' : 'less'} than previous hour (Current: ${currentHourUsers})`;
-  const dayExecMessage = `${dayExecEmoji} ${Math.abs(dayExecDiff)} executions ${dayExecDiff >= 0 ? 'more' : 'less'} than previous day (Current: ${currentDayExecutions})`;
-  const dayUsersMessage = `${dayUsersEmoji} ${Math.abs(dayUsersDiff)} unique users ${dayUsersDiff >= 0 ? 'more' : 'less'} than previous day (Current: ${currentDayUsers})`;
-  return `**📊 ${gameName} - Execution Trend Report**
 
-**Hourly Comparison:**
-${hourExecMessage}
-${hourUsersMessage}
-**Daily Comparison:**
-${dayExecMessage}
-${dayUsersMessage}`;
+// ----------- ULTRA COMPACT COMPARISON (REPLACES getSingleGameComparison & getComparisonMessage) ------------
+function getShortGameName(game) {
+  return {
+    '99nights': 'Nights',
+    'inkgames': 'Ink',
+    'steala': 'Steal',
+    'forsaken': 'Forsaken',
+    'deadrails': 'Dead',
+    'adoptme': 'Adopt',
+    'bitesbynight': 'Bites'
+  }[game] || game;
+}
+function diffStr(num) {
+  return (num > 0 ? '+' : '') + num;
+}
+function getSingleGameComparisonCompact(game) {
+  const g = getShortGameName(game);
+  const currHExec = stats[game].hour.executions.length;
+  const hExecDiff = currHExec - (previousStats[game].hour.executions || 0);
+  const currDExec = stats[game].day.executions.length;
+  const dExecDiff = currDExec - (previousStats[game].day.executions || 0);
+  return `${g}: H:${currHExec}(${diffStr(hExecDiff)}), D:${currDExec}(${diffStr(dExecDiff)})`;
 }
 function getComparisonMessage() {
-  const separator = '\n\n\n';
-  const allComparisons = [
-    getSingleGameComparison('99nights'),
-    getSingleGameComparison('inkgames'),
-    getSingleGameComparison('steala'),
-    getSingleGameComparison('forsaken'),
-    getSingleGameComparison('deadrails'),
-    getSingleGameComparison('adoptme'),
-    getSingleGameComparison('bitesbynight')
+  const games = [
+    '99nights',
+    'inkgames',
+    'steala',
+    'forsaken',
+    'deadrails',
+    'adoptme',
+    'bitesbynight'
   ];
+  const lines = games.map(getSingleGameComparisonCompact);
   const timeUntilReset = getTimeUntilNextDayReset();
-  return `**📊 ALL GAMES - Execution Trend Report** (${getCurrentTimeFormatted()})
-
-${allComparisons.join(separator)}
-
-⏰ **New Day Reset In:** ${timeUntilReset}`;
+  return [
+    `Exec Trends ${getCurrentTimeFormatted()}`,
+    ...lines,
+    `NextDay: ${timeUntilReset}`
+  ].join('\n');
 }
+// ----------------------------------------------------------------------------------------------------------
+
+
 function getGameByChannelId(channelId) {
   for (const [game, id] of Object.entries(CHANNELS)) {
     if (String(id) === String(channelId)) {
